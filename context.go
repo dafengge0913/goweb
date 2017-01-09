@@ -1,9 +1,9 @@
 package goweb
 
 import (
-	"net/http"
-	"html/template"
 	"github.com/dafengge0913/golog"
+	"html/template"
+	"net/http"
 )
 
 type Context struct {
@@ -15,10 +15,10 @@ type Context struct {
 
 func newContext(log *golog.Logger, req *http.Request, rw http.ResponseWriter) *Context {
 	return &Context{
-		log:           log,
-		Req:           req,
-		Params:        make(map[string]string),
-		responseWriter:rw,
+		log:            log,
+		Req:            req,
+		Params:         make(map[string]string),
+		responseWriter: rw,
 	}
 }
 

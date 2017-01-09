@@ -16,9 +16,9 @@ type server struct {
 
 func NewServer() *server {
 	return &server{
-		log:          golog.NewLogger(golog.LEVEL_DEBUG, nil),
-		routers:      make([]*router, 0),
-		staticRouters:make(map[string]http.Handler),
+		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
+		routers:       make([]*router, 0),
+		staticRouters: make(map[string]http.Handler),
 	}
 
 }
@@ -68,7 +68,7 @@ func (srv *server) findRouter(path string) *router {
 		if matchLen == 0 {
 			continue
 		}
-		matchIdx := match[matchLen - 1]
+		matchIdx := match[matchLen-1]
 		if matchIdx >= mostMatchIdx { // use the last setting
 			mostMatchIdx = matchIdx
 			mostMatch = r
