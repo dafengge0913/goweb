@@ -11,6 +11,7 @@ func main() {
 	s.AddRouter("/hello1/haha", Haha)
 	s.AddRouter("/hello[0-9]+", HelloN)
 	s.AddRouter("/hello1", Hello1)
+	s.AddStaticRouter("/css/", "example/css")
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
 	}

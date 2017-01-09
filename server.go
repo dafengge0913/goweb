@@ -9,21 +9,29 @@ import (
 type HTTPHandler func(ctx *Context)
 
 type server struct {
-	log     *golog.Logger
-	routers []*router
+	log           *golog.Logger
+	routers       []*router
+	staticRouters map[string]http.Handler
 }
 
 func NewServer() *server {
 	return &server{
-		log:     golog.NewLogger(golog.LEVEL_DEBUG, nil),
-		routers: make([]*router, 0),
+		log:          golog.NewLogger(golog.LEVEL_DEBUG, nil),
+		routers:      make([]*router, 0),
+		staticRouters:make(map[string]http.Handler),
 	}
 
 }
 
+// start http server
+// call after all routers have been added
 func (srv *server) Serve(addr string) error {
 	handler := http.NewServeMux()
 	handler.Handle("/", srv)
+	for m, h := range srv.staticRouters {
+		handler.Handle(m, h)
+	}
+	srv.staticRouters = nil // staticRouters won't be used anymore
 	return http.ListenAndServe(addr, handler)
 }
 
@@ -81,4 +89,9 @@ func (srv *server) AddRouter(match string, handler HTTPHandler) {
 		handler: handler,
 	}
 	srv.routers = append(srv.routers, r)
+}
+
+func (srv *server) AddStaticRouter(match, filePath string) {
+	fs := http.FileServer(http.Dir(filePath))
+	srv.staticRouters[match] = http.StripPrefix(match, fs)
 }
