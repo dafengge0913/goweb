@@ -12,6 +12,7 @@ type Context struct {
 	Req            *http.Request
 	params         map[string]string
 	responseWriter http.ResponseWriter
+	jsonParams     map[string]string
 }
 
 func newContext(log *golog.Logger, req *http.Request, rw http.ResponseWriter) *Context {
@@ -28,7 +29,10 @@ func (ctx *Context) Params() map[string]string {
 }
 
 func (ctx *Context) JSONParams() map[string]string {
-	param := make(map[string]string)
+	if ctx.jsonParams != nil {
+		return ctx.jsonParams
+	}
+	ctx.jsonParams = make(map[string]string)
 	var jsonStr string
 	for k := range ctx.Params() {
 		jsonStr = k
@@ -36,14 +40,14 @@ func (ctx *Context) JSONParams() map[string]string {
 	}
 
 	if len(jsonStr) == 0 {
-		return param
+		return ctx.jsonParams
 	}
 
-	if err := json.Unmarshal([]byte(jsonStr), &param); err != nil {
+	if err := json.Unmarshal([]byte(jsonStr), &ctx.jsonParams); err != nil {
 		ctx.log.Error("Unmarshal json error: %v", err)
-		return param
+		return ctx.jsonParams
 	}
-	return param
+	return ctx.jsonParams
 }
 
 func (ctx *Context) ResponseTemplate(tpl *template.Template, data interface{}) {

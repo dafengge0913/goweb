@@ -48,6 +48,7 @@ func Haha(ctx *goweb.Context) {
 
 func helloAjax(ctx *goweb.Context) {
 	name := ""
+	fmt.Printf("param len: : %d \n", len(ctx.JSONParams()))
 	for k, v := range ctx.JSONParams() {
 		fmt.Printf("helloAjax : %v -> %v \n", k, v)
 		name = v
