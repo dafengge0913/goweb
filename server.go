@@ -45,7 +45,7 @@ func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	req.ParseForm()
 	if len(req.Form) > 0 {
 		for k, v := range req.Form {
-			ctx.Params[k] = v[0]
+			ctx.params[k] = v[0]
 		}
 	}
 	r := srv.findRouter(reqPath)

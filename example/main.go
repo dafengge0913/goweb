@@ -12,20 +12,22 @@ func main() {
 	s.AddRouter("/hello[0-9]+", HelloN)
 	s.AddRouter("/hello1", Hello1)
 	s.AddStaticRouter("/css/", "example/css")
+	s.AddStaticRouter("/js/", "example/js")
+	s.AddRouter("/helloAjax", helloAjax)
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
 	}
 }
 
 func HelloN(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("HelloN : %v -> %v \n", k, v)
 	}
 }
 
 func Hello1(ctx *goweb.Context) {
 	name := ""
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Hello1 : %v -> %v \n", k, v)
 		name = v
 	}
@@ -39,7 +41,16 @@ func Hello1(ctx *goweb.Context) {
 }
 
 func Haha(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Haha : %v -> %v \n", k, v)
 	}
+}
+
+func helloAjax(ctx *goweb.Context) {
+	name := ""
+	for k, v := range ctx.JSONParams() {
+		fmt.Printf("helloAjax : %v -> %v \n", k, v)
+		name = v
+	}
+	ctx.ResponseJSON("Ajax hello " + name)
 }

@@ -46,25 +46,25 @@ func main3() {
 }
 
 func Hello1(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Hello1 : %v -> %v \n", k, v)
 	}
 }
 
 func Hello2(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Hello2 : %v -> %v \n", k, v)
 	}
 }
 
 func Hello3(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Hello3 : %v -> %v \n", k, v)
 	}
 }
 
 func Haha(ctx *goweb.Context) {
-	for k, v := range ctx.Params {
+	for k, v := range ctx.Params() {
 		fmt.Printf("Haha : %v -> %v \n", k, v)
 	}
 }
