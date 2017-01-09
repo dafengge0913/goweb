@@ -27,13 +27,13 @@ func (srv *server) Serve(addr string) error {
 	return http.ListenAndServe(addr, handler)
 }
 
-func (srv *server) ServeHTTP(c http.ResponseWriter, req *http.Request) {
+func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	reqPath := req.URL.Path
 	if err := req.ParseForm(); err != nil {
 		srv.log.Error("Parse request form error: %v", err)
 		return
 	}
-	ctx := newContext(req)
+	ctx := newContext(srv.log, req, rw)
 	req.ParseForm()
 	if len(req.Form) > 0 {
 		for k, v := range req.Form {
@@ -60,7 +60,7 @@ func (srv *server) findRouter(path string) *router {
 		if matchLen == 0 {
 			continue
 		}
-		matchIdx := match[matchLen-1]
+		matchIdx := match[matchLen - 1]
 		if matchIdx >= mostMatchIdx { // use the last setting
 			mostMatchIdx = matchIdx
 			mostMatch = r

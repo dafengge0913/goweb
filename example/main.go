@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/dafengge0913/goweb"
+	"html/template"
 )
 
 func main() {
@@ -22,8 +23,17 @@ func HelloN(ctx *goweb.Context) {
 }
 
 func Hello1(ctx *goweb.Context) {
+	name := ""
 	for k, v := range ctx.Params {
 		fmt.Printf("Hello1 : %v -> %v \n", k, v)
+		name = v
+	}
+	if tpl, err := template.ParseFiles("example/index.html"); err != nil {
+		fmt.Println("parse template error: ", err)
+	} else {
+		data := make(map[string]string)
+		data["Name"] = name
+		ctx.ResponseTemplate(tpl, data)
 	}
 }
 
