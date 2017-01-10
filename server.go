@@ -23,6 +23,11 @@ func NewServer() *server {
 
 }
 
+type router struct {
+	re      *regexp.Regexp
+	handler HTTPHandler
+}
+
 // start http server
 // call after all routers have been added
 func (srv *server) Serve(addr string) error {
