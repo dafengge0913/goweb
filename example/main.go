@@ -14,6 +14,8 @@ func main() {
 	s.AddStaticRouter("/css/", "example/css")
 	s.AddStaticRouter("/js/", "example/js")
 	s.AddRouter("/helloAjax", helloAjax)
+	s.AddRouter("/addCookie", addCookie)
+	s.AddRouter("/delCookie", delCookie)
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
 	}
@@ -54,4 +56,12 @@ func helloAjax(ctx *goweb.Context) {
 		name = v
 	}
 	ctx.ResponseJSON("Ajax hello " + name)
+}
+
+func addCookie(ctx *goweb.Context) {
+	ctx.SetCookie("sid", "12345678")
+}
+
+func delCookie(ctx *goweb.Context) {
+	ctx.DelCookie("sid")
 }

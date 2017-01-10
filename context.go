@@ -63,3 +63,31 @@ func (ctx *Context) ResponseJSON(data interface{}) {
 		ctx.responseWriter.Write(jsonBytes)
 	}
 }
+
+func (ctx *Context) SetCookie(name, value string) {
+	c := &http.Cookie{
+		Name:  name,
+		Value: value,
+	}
+	http.SetCookie(ctx.responseWriter, c)
+}
+
+func (ctx *Context) SetRawCookie(c *http.Cookie) {
+	http.SetCookie(ctx.responseWriter, c)
+}
+
+func (ctx *Context) Cookie(name string) *http.Cookie {
+	c, err := ctx.Req.Cookie(name)
+	if err != nil {
+		return nil
+	}
+	return c
+}
+
+func (ctx *Context) DelCookie(name string) {
+	c := ctx.Cookie(name)
+	if c != nil {
+		c.MaxAge = -1
+		http.SetCookie(ctx.responseWriter, c)
+	}
+}
