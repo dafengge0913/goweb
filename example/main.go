@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/dafengge0913/goweb"
 	"html/template"
+
+	"github.com/dafengge0913/goweb"
 )
 
 func main() {

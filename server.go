@@ -1,9 +1,10 @@
 package goweb
 
 import (
-	"github.com/dafengge0913/golog"
 	"net/http"
 	"regexp"
+
+	"github.com/dafengge0913/golog"
 )
 
 type HTTPHandler func(ctx *Context)
