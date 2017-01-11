@@ -25,6 +25,10 @@ func newContext(log *golog.Logger, req *http.Request, rw http.ResponseWriter) *C
 	}
 }
 
+func (ctx *Context) Param(key string) string {
+	return ctx.params[key]
+}
+
 func (ctx *Context) Params() map[string]string {
 	return ctx.params
 }
