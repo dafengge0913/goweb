@@ -44,7 +44,7 @@ func (srv *server) Serve(addr string) error {
 func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	reqPath := req.URL.Path
 	if err := req.ParseForm(); err != nil {
-		srv.log.Error("Parse request form error: %v", err)
+		srv.log.Error("parse request form error: %v", err)
 		return
 	}
 	ctx := newContext(srv.log, req, rw)

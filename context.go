@@ -45,7 +45,7 @@ func (ctx *Context) JSONParams() map[string]string {
 	}
 
 	if err := json.Unmarshal([]byte(jsonStr), &ctx.jsonParams); err != nil {
-		ctx.log.Error("Unmarshal json error: %v", err)
+		ctx.log.Error("unmarshal json error: %v", err)
 		return ctx.jsonParams
 	}
 	return ctx.jsonParams
@@ -53,7 +53,7 @@ func (ctx *Context) JSONParams() map[string]string {
 
 func (ctx *Context) ResponseTemplate(tpl *template.Template, data interface{}) {
 	if err := tpl.Execute(ctx.responseWriter, data); err != nil {
-		ctx.log.Error("tpl execute error: %v", err)
+		ctx.log.Error("template execute error: %v", err)
 	}
 }
 
