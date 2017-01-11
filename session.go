@@ -1,23 +1,35 @@
 package goweb
 
 import (
+	"bytes"
+	"math/rand"
 	"net/http"
 	"time"
 )
 
-const sessionKey = "sid"
+// a-z A-Z 0-9 in random order
+const words = "MaSHgPl3jh64EzrpqLstV5XOnF1BcTufDiIWKCbyZwRQ98JGkUNx0A2m7veYod"
+
+//const words = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+//const words = "0123456789"
+
+var random = rand.New(rand.NewSource(time.Now().Unix() + 987653))
 
 type SessionIdType string
 
 type sessionManager struct {
 	sessionMaxAge int // second
 	sessions      map[SessionIdType]*session
+	sessionKey    string
+	sessionIdLen  int
 }
 
-func newSessionManager(sessionTimeout int) *sessionManager {
+func newSessionManager(sessionTimeout int, sessionKey string, sessionIdLen int) *sessionManager {
 	return &sessionManager{
 		sessionMaxAge: sessionTimeout,
 		sessions:      make(map[SessionIdType]*session),
+		sessionKey:    sessionKey,
+		sessionIdLen:  sessionIdLen,
 	}
 }
 
@@ -31,7 +43,7 @@ func (sm *sessionManager) session(key SessionIdType) *session {
 
 func (sm *sessionManager) getOrCreateSession(ctx *Context) *session {
 	var sessionId SessionIdType
-	if c := ctx.Cookie(sessionKey); c == nil {
+	if c := ctx.Cookie(sm.sessionKey); c == nil {
 		return newSession(ctx, sm)
 	} else {
 		sessionId = SessionIdType(c.Value)
@@ -44,6 +56,19 @@ func (sm *sessionManager) getOrCreateSession(ctx *Context) *session {
 	return s
 }
 
+// get reversed len(words) scale string
+func sessionIdEncodeInt64(buf *bytes.Buffer, i int64) {
+	if i == 0 {
+		buf.WriteByte(words[0])
+		return
+	}
+	wl := int64(len(words))
+	for i > 0 {
+		buf.WriteByte(words[i%wl])
+		i /= wl
+	}
+}
+
 type session struct {
 	id         SessionIdType
 	data       map[interface{}]interface{}
@@ -51,13 +76,13 @@ type session struct {
 }
 
 func newSession(ctx *Context, sm *sessionManager) *session {
-	sessionId := genSessionId()
+	sessionId := GenSessionId(sm.sessionIdLen)
 	s := &session{
 		id:   sessionId,
 		data: make(map[interface{}]interface{}),
 	}
 	cookie := &http.Cookie{
-		Name:     sessionKey,
+		Name:     sm.sessionKey,
 		Value:    string(sessionId),
 		HttpOnly: true,
 	}
@@ -66,8 +91,17 @@ func newSession(ctx *Context, sm *sessionManager) *session {
 	return s
 }
 
-func genSessionId() SessionIdType {
-	return ""
+func GenSessionId(length int) SessionIdType {
+	var buf bytes.Buffer
+	sessionIdEncodeInt64(&buf, time.Now().UnixNano())
+	if buf.Len() >= length {
+		return SessionIdType(buf.Bytes()[:length])
+	}
+	wl := len(words)
+	for i := 0; i < length-buf.Len(); i++ {
+		buf.WriteByte(words[random.Intn(wl)])
+	}
+	return SessionIdType(buf.String())
 }
 
 func (s *session) Set(key, value interface{}) {

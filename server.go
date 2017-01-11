@@ -9,6 +9,8 @@ import (
 )
 
 const defaultSessionTimeout = 600 // 10 minute
+const defaultSessionKey = "sid"
+const defaultSessionIdLen = 16
 
 type HTTPHandler func(ctx *Context)
 
@@ -25,7 +27,7 @@ func NewServer() *Server {
 		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
 		routers:       make([]*router, 0),
 		staticRouters: make(map[string]http.Handler),
-		sm:            newSessionManager(defaultSessionTimeout),
+		sm:            newSessionManager(defaultSessionTimeout, defaultSessionKey, defaultSessionIdLen),
 	}
 }
 
