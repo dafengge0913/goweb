@@ -11,6 +11,7 @@ import (
 type Context struct {
 	log            *golog.Logger
 	Req            *http.Request
+	session        *session
 	params         map[string]string
 	responseWriter http.ResponseWriter
 	jsonParams     map[string]string
@@ -95,4 +96,12 @@ func (ctx *Context) DelCookie(name string) {
 		c.MaxAge = -1
 		http.SetCookie(ctx.responseWriter, c)
 	}
+}
+
+func (ctx *Context) Session() *session {
+	if ctx.session != nil {
+		return ctx.session
+	}
+	ctx.log.Warn("session is not enable")
+	return nil
 }

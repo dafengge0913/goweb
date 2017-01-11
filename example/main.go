@@ -17,6 +17,8 @@ func main() {
 	s.AddRouter("/helloAjax", helloAjax)
 	s.AddRouter("/addCookie", addCookie)
 	s.AddRouter("/delCookie", delCookie)
+	s.AddRouter("/login", login)
+	s.AddRouter("/admin", admin)
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
 	}
@@ -65,4 +67,14 @@ func addCookie(ctx *goweb.Context) {
 
 func delCookie(ctx *goweb.Context) {
 	ctx.DelCookie("sid")
+}
+
+func login(ctx *goweb.Context) {
+	ctx.Session().Set("username", ctx.Param("username"))
+}
+
+func admin(ctx *goweb.Context) {
+	if name, fd := ctx.Session().Get("username"); fd {
+		fmt.Printf("username : %s  \n", name)
+	}
 }

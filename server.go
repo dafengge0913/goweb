@@ -7,12 +7,15 @@ import (
 	"github.com/dafengge0913/golog"
 )
 
+const defaultSessionTimeout = 600 // 10 minute
+
 type HTTPHandler func(ctx *Context)
 
 type server struct {
 	log           *golog.Logger
 	routers       []*router
 	staticRouters map[string]http.Handler
+	sm            *sessionManager
 }
 
 func NewServer() *server {
@@ -20,8 +23,8 @@ func NewServer() *server {
 		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
 		routers:       make([]*router, 0),
 		staticRouters: make(map[string]http.Handler),
+		sm:            newSessionManager(defaultSessionTimeout),
 	}
-
 }
 
 type router struct {
@@ -48,6 +51,9 @@ func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := newContext(srv.log, req, rw)
+	if srv.sm != nil {
+		srv.setSession(ctx)
+	}
 	req.ParseForm()
 	if len(req.Form) > 0 {
 		for k, v := range req.Form {
@@ -100,4 +106,8 @@ func (srv *server) AddRouter(match string, handler HTTPHandler) {
 func (srv *server) AddStaticRouter(match, filePath string) {
 	fs := http.FileServer(http.Dir(filePath))
 	srv.staticRouters[match] = http.StripPrefix(match, fs)
+}
+
+func (srv *server) setSession(ctx *Context) {
+	ctx.session = srv.sm.getOrCreateSession(ctx)
 }
