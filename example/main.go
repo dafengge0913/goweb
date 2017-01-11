@@ -7,8 +7,10 @@ import (
 	"github.com/dafengge0913/goweb"
 )
 
+var s *goweb.Server
+
 func main() {
-	s := goweb.NewServer()
+	s = goweb.NewServer()
 	s.AddRouter("/hello1/haha", Haha)
 	s.AddRouter("/hello[0-9]+", HelloN)
 	s.AddRouter("/hello1", Hello1)
@@ -19,6 +21,7 @@ func main() {
 	s.AddRouter("/delCookie", delCookie)
 	s.AddRouter("/login", login)
 	s.AddRouter("/admin", admin)
+	s.AddRouter("/close", closeServer) // just for testing
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
 	}
@@ -77,4 +80,8 @@ func admin(ctx *goweb.Context) {
 	if name, fd := ctx.Session().Get("username"); fd {
 		fmt.Printf("username : %s  \n", name)
 	}
+}
+
+func closeServer(ctx *goweb.Context) {
+	s.Close()
 }

@@ -5,21 +5,23 @@ import (
 	"regexp"
 
 	"github.com/dafengge0913/golog"
+	"net"
 )
 
 const defaultSessionTimeout = 600 // 10 minute
 
 type HTTPHandler func(ctx *Context)
 
-type server struct {
+type Server struct {
+	ln            net.Listener
 	log           *golog.Logger
 	routers       []*router
 	staticRouters map[string]http.Handler
 	sm            *sessionManager
 }
 
-func NewServer() *server {
-	return &server{
+func NewServer() *Server {
+	return &Server{
 		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
 		routers:       make([]*router, 0),
 		staticRouters: make(map[string]http.Handler),
@@ -32,19 +34,34 @@ type router struct {
 	handler HTTPHandler
 }
 
-// start http server
+// start http Server
 // call after all routers have been added
-func (srv *server) Serve(addr string) error {
+func (srv *Server) Serve(addr string) error {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	srv.ln = ln
+	defer ln.Close()
 	handler := http.NewServeMux()
 	handler.Handle("/", srv)
 	for m, h := range srv.staticRouters {
 		handler.Handle(m, h)
 	}
 	srv.staticRouters = nil // staticRouters won't be used anymore
-	return http.ListenAndServe(addr, handler)
+	http.Serve(ln, handler)
+	return nil
 }
 
-func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (srv *Server) Close() {
+	if srv.ln != nil {
+		if err := srv.ln.Close(); err != nil {
+			srv.log.Info("close server error: %v", err)
+		}
+	}
+}
+
+func (srv *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	reqPath := req.URL.Path
 	if err := req.ParseForm(); err != nil {
 		srv.log.Error("parse request form error: %v", err)
@@ -68,7 +85,7 @@ func (srv *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	r.handler(ctx)
 }
 
-func (srv *server) findRouter(path string) *router {
+func (srv *Server) findRouter(path string) *router {
 	var mostMatch *router
 	mostMatchIdx := 0
 	for _, r := range srv.routers {
@@ -90,7 +107,7 @@ func (srv *server) findRouter(path string) *router {
 	return mostMatch
 }
 
-func (srv *server) AddRouter(match string, handler HTTPHandler) {
+func (srv *Server) AddRouter(match string, handler HTTPHandler) {
 	matchRe, err := regexp.Compile(match)
 	if err != nil {
 		srv.log.Error("compile regexp error: %v", err)
@@ -103,11 +120,11 @@ func (srv *server) AddRouter(match string, handler HTTPHandler) {
 	srv.routers = append(srv.routers, r)
 }
 
-func (srv *server) AddStaticRouter(match, filePath string) {
+func (srv *Server) AddStaticRouter(match, filePath string) {
 	fs := http.FileServer(http.Dir(filePath))
 	srv.staticRouters[match] = http.StripPrefix(match, fs)
 }
 
-func (srv *server) setSession(ctx *Context) {
+func (srv *Server) setSession(ctx *Context) {
 	ctx.session = srv.sm.getOrCreateSession(ctx)
 }
