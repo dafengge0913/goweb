@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ var random = rand.New(rand.NewSource(time.Now().Unix() + 987653))
 type SessionIdType string
 
 type sessionManager struct {
+	sync.RWMutex
 	sessionMaxAge int // second
 	sessions      map[SessionIdType]*session
 	sessionKey    string
@@ -33,22 +35,19 @@ func newSessionManager(sessionTimeout int, sessionKey string, sessionIdLen int) 
 	}
 }
 
-func (sm *sessionManager) addSession(key SessionIdType, s *session) {
-	sm.sessions[key] = s
-}
-
 func (sm *sessionManager) session(key SessionIdType) *session {
 	return sm.sessions[key]
 }
 
 func (sm *sessionManager) getOrCreateSession(ctx *Context) *session {
+	sm.Lock()
+	defer sm.Unlock()
 	var sessionId SessionIdType
 	if c := ctx.Cookie(sm.sessionKey); c == nil {
 		return newSession(ctx, sm)
 	} else {
 		sessionId = SessionIdType(c.Value)
 	}
-
 	s := sm.session(sessionId)
 	if s == nil {
 		s = newSession(ctx, sm)
@@ -70,6 +69,7 @@ func sessionIdEncodeInt64(buf *bytes.Buffer, i int64) {
 }
 
 type session struct {
+	sync.RWMutex
 	id         SessionIdType
 	data       map[interface{}]interface{}
 	createTime time.Time
@@ -87,7 +87,7 @@ func newSession(ctx *Context, sm *sessionManager) *session {
 		HttpOnly: true,
 	}
 	ctx.SetRawCookie(cookie)
-	sm.addSession(sessionId, s)
+	sm.sessions[sessionId] = s
 	return s
 }
 
@@ -105,10 +105,14 @@ func GenSessionId(length int) SessionIdType {
 }
 
 func (s *session) Set(key, value interface{}) {
+	s.Lock()
+	defer s.Unlock()
 	s.data[key] = value
 }
 
 func (s *session) Get(key interface{}) (interface{}, bool) {
+	s.RLock()
+	defer s.RUnlock()
 	value, fd := s.data[key]
 	return value, fd
 }
