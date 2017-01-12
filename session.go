@@ -18,28 +18,60 @@ var random = rand.New(rand.NewSource(time.Now().Unix() + 987653))
 
 type SessionIdType string
 
-type sessionManager struct {
-	sync.RWMutex
+type sessionManagerConfig struct {
 	sessionMaxAge int // second
-	sessions      map[SessionIdType]*session
 	sessionKey    string
 	sessionIdLen  int
+	cleanInterval time.Duration
 }
 
-func newSessionManager(sessionTimeout int, sessionKey string, sessionIdLen int) *sessionManager {
-	return &sessionManager{
-		sessionMaxAge: sessionTimeout,
-		sessions:      make(map[SessionIdType]*session),
-		sessionKey:    sessionKey,
-		sessionIdLen:  sessionIdLen,
+type sessionManager struct {
+	*sessionManagerConfig
+	sync.RWMutex
+	sessions    map[SessionIdType]*session
+	cleanTicker *time.Ticker
+}
+
+func newSessionManager(config *sessionManagerConfig) *sessionManager {
+	sm := &sessionManager{
+		sessionManagerConfig: config,
+		sessions:             make(map[SessionIdType]*session),
+		cleanTicker:          time.NewTicker(config.cleanInterval),
 	}
+	sm.goRunClean()
+	return sm
 }
 
-func (sm *sessionManager) session(key SessionIdType) *session {
-	return sm.sessions[key]
+// delete expired session
+func (sm *sessionManager) goRunClean() {
+	go func() {
+		for {
+			select {
+			case t, ok := <-sm.cleanTicker.C:
+				if !ok {
+					return
+				}
+				sm.RLock()
+				for sid, s := range sm.sessions {
+					if int(t.Sub(s.lastAccessTime)/time.Second) >= sm.sessionMaxAge {
+						sm.RUnlock()
+						sm.Lock()
+						delete(sm.sessions, sid)
+						sm.Unlock()
+						sm.RLock()
+					}
+				}
+				sm.RUnlock()
+			}
+		}
+	}()
 }
 
-func (sm *sessionManager) getOrCreateSession(ctx *Context) *session {
+func (sm *sessionManager) Close() {
+	sm.cleanTicker.Stop()
+}
+
+func (sm *sessionManager) session(ctx *Context) *session {
 	sm.Lock()
 	defer sm.Unlock()
 	var sessionId SessionIdType
@@ -48,10 +80,11 @@ func (sm *sessionManager) getOrCreateSession(ctx *Context) *session {
 	} else {
 		sessionId = SessionIdType(c.Value)
 	}
-	s := sm.session(sessionId)
+	s := sm.sessions[sessionId]
 	if s == nil {
 		s = newSession(ctx, sm)
 	}
+	s.lastAccessTime = time.Now()
 	return s
 }
 
@@ -70,16 +103,17 @@ func sessionIdEncodeInt64(buf *bytes.Buffer, i int64) {
 
 type session struct {
 	sync.RWMutex
-	id         SessionIdType
-	data       map[interface{}]interface{}
-	createTime time.Time
+	id             SessionIdType
+	data           map[interface{}]interface{}
+	lastAccessTime time.Time
 }
 
 func newSession(ctx *Context, sm *sessionManager) *session {
 	sessionId := GenSessionId(sm.sessionIdLen)
 	s := &session{
-		id:   sessionId,
-		data: make(map[interface{}]interface{}),
+		id:             sessionId,
+		data:           make(map[interface{}]interface{}),
+		lastAccessTime: time.Now(),
 	}
 	cookie := &http.Cookie{
 		Name:     sm.sessionKey,

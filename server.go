@@ -1,16 +1,21 @@
 package goweb
 
 import (
+	"net"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/dafengge0913/golog"
-	"net"
 )
 
-const defaultSessionTimeout = 600 // 10 minute
-const defaultSessionKey = "sid"
-const defaultSessionIdLen = 16
+//todo provide set func
+var defaultSessionManagerConfig = &sessionManagerConfig{
+	sessionMaxAge: 600, // 10 minute
+	sessionKey:    "sid",
+	sessionIdLen:  16,
+	cleanInterval: time.Second * 10,
+}
 
 type HTTPHandler func(ctx *Context)
 
@@ -27,7 +32,7 @@ func NewServer() *Server {
 		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
 		routers:       make([]*router, 0),
 		staticRouters: make(map[string]http.Handler),
-		sm:            newSessionManager(defaultSessionTimeout, defaultSessionKey, defaultSessionIdLen),
+		sm:            newSessionManager(defaultSessionManagerConfig),
 	}
 }
 
@@ -44,7 +49,7 @@ func (srv *Server) Serve(addr string) error {
 		return err
 	}
 	srv.ln = ln
-	defer ln.Close()
+	defer srv.Close()
 	handler := http.NewServeMux()
 	handler.Handle("/", srv)
 	for m, h := range srv.staticRouters {
@@ -60,6 +65,9 @@ func (srv *Server) Close() {
 		if err := srv.ln.Close(); err != nil {
 			srv.log.Info("close server error: %v", err)
 		}
+	}
+	if srv.sm != nil {
+		srv.sm.Close()
 	}
 }
 
@@ -128,5 +136,5 @@ func (srv *Server) AddStaticRouter(match, filePath string) {
 }
 
 func (srv *Server) setSession(ctx *Context) {
-	ctx.session = srv.sm.getOrCreateSession(ctx)
+	ctx.session = srv.sm.session(ctx)
 }
