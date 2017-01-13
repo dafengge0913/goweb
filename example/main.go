@@ -14,13 +14,14 @@ func main() {
 	s.AddRouter("/hello1/haha", Haha)
 	s.AddRouter("/hello[0-9]+", HelloN)
 	s.AddRouter("/hello1", Hello1)
-	s.AddStaticRouter("/css/", "example/css")
-	s.AddStaticRouter("/js/", "example/js")
+	s.AddStaticRouter("/css/", "/css/", "example/css")
+	s.AddStaticRouter("/js/", "/js/", "example/js")
+	s.AddStaticRouter("/.*\\.html", "/", "example") // match xxx.html not xxx.htm
+	s.AddRouter("/admin", admin)                    // both admin.html and admin can be access
 	s.AddRouter("/helloAjax", helloAjax)
 	s.AddRouter("/addCookie", addCookie)
 	s.AddRouter("/delCookie", delCookie)
 	s.AddRouter("/login", login)
-	s.AddRouter("/admin", admin)
 	s.AddRouter("/close", closeServer) // just for testing
 	if err := s.Serve(":8888"); err != nil {
 		fmt.Println("start server error: ", err)
@@ -82,6 +83,6 @@ func admin(ctx *goweb.Context) {
 	}
 }
 
-func closeServer(ctx *goweb.Context) {
+func closeServer(_ *goweb.Context) {
 	s.Close()
 }

@@ -20,25 +20,59 @@ var defaultSessionManagerConfig = &sessionManagerConfig{
 type HTTPHandler func(ctx *Context)
 
 type Server struct {
-	ln            net.Listener
-	log           *golog.Logger
-	routers       []*router
-	staticRouters map[string]http.Handler
-	sm            *sessionManager
+	ln      net.Listener
+	log     *golog.Logger
+	routers []iRouter
+	sm      *sessionManager
 }
 
 func NewServer() *Server {
 	return &Server{
-		log:           golog.NewLogger(golog.LEVEL_DEBUG, nil),
-		routers:       make([]*router, 0),
-		staticRouters: make(map[string]http.Handler),
-		sm:            newSessionManager(defaultSessionManagerConfig),
+		log:     golog.NewLogger(golog.LEVEL_DEBUG, nil),
+		routers: make([]iRouter, 0),
+		sm:      newSessionManager(defaultSessionManagerConfig),
 	}
 }
 
+type iRouter interface {
+	match(path string) bool
+	matchIndex(path string) int
+	handle(ctx *Context)
+}
+
+type baseRouter struct {
+	re *regexp.Regexp
+}
+
+func (br *baseRouter) match(path string) bool {
+	return br.re.MatchString(path)
+}
+
+func (br *baseRouter) matchIndex(path string) int {
+	match := br.re.FindStringSubmatchIndex(path)
+	matchLen := len(match)
+	if matchLen == 0 {
+		return -1
+	}
+	return match[matchLen-1]
+}
+
 type router struct {
-	re      *regexp.Regexp
+	*baseRouter
 	handler HTTPHandler
+}
+
+func (r *router) handle(ctx *Context) {
+	r.handler(ctx)
+}
+
+type staticRouter struct {
+	*baseRouter
+	handler http.Handler
+}
+
+func (sr *staticRouter) handle(ctx *Context) {
+	sr.handler.ServeHTTP(ctx.responseWriter, ctx.Req)
 }
 
 // start http Server
@@ -52,10 +86,6 @@ func (srv *Server) Serve(addr string) error {
 	defer srv.Close()
 	handler := http.NewServeMux()
 	handler.Handle("/", srv)
-	for m, h := range srv.staticRouters {
-		handler.Handle(m, h)
-	}
-	srv.staticRouters = nil // staticRouters won't be used anymore
 	http.Serve(ln, handler)
 	return nil
 }
@@ -92,22 +122,17 @@ func (srv *Server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		srv.log.Debug("router not found path:%s", reqPath)
 		return
 	}
-	r.handler(ctx)
+	r.handle(ctx)
 }
 
-func (srv *Server) findRouter(path string) *router {
-	var mostMatch *router
+func (srv *Server) findRouter(path string) iRouter {
+	var mostMatch iRouter
 	mostMatchIdx := 0
 	for _, r := range srv.routers {
-		if !r.re.MatchString(path) {
+		if !r.match(path) {
 			continue
 		}
-		match := r.re.FindStringSubmatchIndex(path)
-		matchLen := len(match)
-		if matchLen == 0 {
-			continue
-		}
-		matchIdx := match[matchLen-1]
+		matchIdx := r.matchIndex(path)
 		if matchIdx >= mostMatchIdx { // use the last setting
 			mostMatchIdx = matchIdx
 			mostMatch = r
@@ -118,21 +143,36 @@ func (srv *Server) findRouter(path string) *router {
 }
 
 func (srv *Server) AddRouter(match string, handler HTTPHandler) {
-	matchRe, err := regexp.Compile(match)
+	re, err := regexp.Compile(match)
 	if err != nil {
 		srv.log.Error("compile regexp error: %v", err)
 		return
 	}
 	r := &router{
-		re:      matchRe,
+		baseRouter: &baseRouter{
+			re: re,
+		},
 		handler: handler,
 	}
 	srv.routers = append(srv.routers, r)
 }
 
-func (srv *Server) AddStaticRouter(match, filePath string) {
+func (srv *Server) AddStaticRouter(match, prefix, filePath string) {
+	re, err := regexp.Compile(match)
+	if err != nil {
+		srv.log.Error("compile regexp error: %v", err)
+		return
+	}
 	fs := http.FileServer(http.Dir(filePath))
-	srv.staticRouters[match] = http.StripPrefix(match, fs)
+	handler := http.StripPrefix(prefix, fs)
+	r := &staticRouter{
+		baseRouter: &baseRouter{
+			re: re,
+		},
+		handler: handler,
+	}
+	srv.routers = append(srv.routers, r)
+
 }
 
 func (srv *Server) setSession(ctx *Context) {
